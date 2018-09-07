@@ -3,8 +3,6 @@
 #include "dcs7.inc"
 
 ; For the output, clock = clocking bits into register, data = data to clock in.
-bPort			.equ  	$00
-
 SendCLDL		.equ	$00
 SendCHDL		.equ	$01
 SendCLDH		.equ	$02
@@ -26,19 +24,19 @@ GetCHDH			.equ	$00
 
 .varloc SaveSScreen,768
 .var 1,layer
-.struct cube_data_struct
-	.var 2,layer1
-	.var 2,layer2
-	.var 2,layer3
-.endstruct
-
-.var cube_data_struct, cube_data
+.var 6, cube_data
 
 .list
 .org progstart
     .db $BB,$6D
 Start:
 	; Set up ISR
+	ld hl,%000111010
+	ld (cube_data),hl
+	ld hl,%010111000
+	ld (cube_data + 2),hl
+	ld hl,%010011010
+	ld (cube_data + 4),hl
 	ld a,2
 	ld (layer),a
 
@@ -51,7 +49,7 @@ Start:
 	bcall(_delRes)
 	ret
 
-#include "interrupt.asm"
+#include "../source/calcledcube/interrupt.asm"
 
 .end
 END

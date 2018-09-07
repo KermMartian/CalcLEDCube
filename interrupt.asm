@@ -83,24 +83,31 @@ Interrupt_Start:
 ;only 545 tstates for your main programs execution in that time slice.
 ;The interrupt would take up 99% of the cpu time.
 ;(This would be a likely issue in gray scale applications.)
+
+; Very important note about this specific interrupt:
+; Because the reference implementation uses PNP transistors for the columns, we need
+; 0 bits to turn LEDs on (ie, reverse-bias the transistors), and 1 bits to turn them off,
+; *in the columns only*. Therefore, we use 0 for column off, 1 for column on, but then
+; 0 for layer on, 1 for layer off. Then, when we're shifting out 12 bits, we just invert
+; every bit, yielding 0 for column on, 1 for column off; 0 for layer off, 1 for layer on.
 	ld hl,cube_data						; First grab the data for the columns of the layer
 	ld a,(layer)
 	ld e,a
 	ld d,0
 	add hl,de
 	add hl,de
-	ld d,(hl)
-	inc hl
 	ld e,(hl)
+	inc hl
+	ld d,(hl)
 	
 	; Put the actual layer number on top.
 	inc a
 	ld b,3
 ISR_SetLayerBits:
-	ld c,0
+	ld c,1									; Why is this reversed? see above
 	cp b
 	jr nz,ISR_SetLayerBits_WrongLayer
-	inc c
+	dec c
 ISR_SetLayerBits_WrongLayer:
 	rr c
 	rl e
@@ -114,8 +121,9 @@ ISR_OutputBits:							; Pipe out 9 bits at a time
 	xor a
 	rr d
 	rr e
-	rlca								; Rotates a bit in, zeroes out carry
-	rlca								; Guaranteed to rotate in a zero, so D is set or reset, and C is reset
+	ccf									; Important note: inverting the bits because PNP transistors. See above.
+	rl a								; Rotates a bit in, zeroes out carry
+	rl a								; Guaranteed to rotate in a zero, so D is set or reset, and C is reset
 	out (bPort),a
 	nop
 	nop
