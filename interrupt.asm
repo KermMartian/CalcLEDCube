@@ -45,6 +45,9 @@ Install_ISR:
 	ld a,%10000000		; Disable link assist, no interrupts
 	out (8),a
 
+	ld a,SendCHDH						; Assert both clock and data, which grounds both.
+	out (bPort),a						; There will be enough math after this to waste time before next bit
+
 ;i is the higher byte of the address that points to the
 ;vector table.  The lower byte, for all practicality,
 ;should be considered random.
@@ -124,26 +127,30 @@ ISR_OutputBits:							; Pipe out 9 bits at a time
 	xor a
 	rr d
 	rr e
-	ccf									; Important note: inverting the bits because PNP transistors. See above.
+	;ccf								; Important note: inverting the bits because PNP transistors. See above.
 	rl a								; Rotates a bit in, zeroes out carry
-	rl a								; Guaranteed to rotate in a zero, so D is set or reset, and C is reset
+	ccf									; Set the carry flag
+	rl a								; Guaranteed to rotate in a one, so D is set or reset, and C is set (which is voltage LOW)
 	out (bPort),a
 	nop
 	nop
-	or %00000001
-	out (bPort),a						; Assert clock in order to actually shift the bit
+	and ~ClockLow						; De-assert the clock, to bring it high
+	out (bPort),a						; ...and actually shift the bit
 	nop
 	nop
 	dec b
 	jr z,ISR_OutputBitsDone
-	xor a
-	out (bPort),a						; De-assert both clock and data. There will be enough math after this to waste time before next bit
+	ld a,SendCHDH						; Assert both clock and data, which grounds both.
+	out (bPort),a						; There will be enough math after this to waste time before next bit
 	jr ISR_OutputBits
 
 ISR_OutputBitsDone:						; Gotta waste time for a nominal 600 cycles
 	ld b,60								; (>= 6e6 clocks/sec * 1e-4 sec / 13 clocks), inflated from 47 for safety
 ISR_OutputBitsDone_Wait:
 	djnz ISR_OutputBitsDone_Wait
+	
+	ld a,SendCHDH						; Assert both clock and data, which grounds both.
+	out (bPort),a						; There will be enough math after this to waste time before next bit
 
 	;advance to next layer
 	ld a,(layer)
