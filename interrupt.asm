@@ -41,6 +41,9 @@ Install_ISR:
 	out (3),a
 	ld a,%00000000		;Fastest timer 1-only frequency, ~560hz = 10,700 cycles max per interrupt
 	out (4),a
+	
+	ld a,%10000000		; Disable link assist, no interrupts
+	out (8),a
 
 ;i is the higher byte of the address that points to the
 ;vector table.  The lower byte, for all practicality,
