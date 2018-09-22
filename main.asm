@@ -33,9 +33,9 @@ Start:
 	; Set up ISR
 	ld hl,%000111010
 	ld (cube_data),hl
-	ld hl,%010111000
+	ld hl,%000111010
 	ld (cube_data + 2),hl
-	ld hl,%010011010
+	ld hl,%000111010
 	ld (cube_data + 4),hl
 	ld a,2
 	ld (layer),a

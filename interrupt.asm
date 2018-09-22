@@ -107,8 +107,8 @@ Interrupt_Start:
 	ld d,(hl)
 	
 	; Put the actual layer number on top.
-	inc a
-	ld b,3
+	add a, 1 + 4
+	ld b,3 + 4								; 3 layer bits plus 4 RCLK padding bits
 ISR_SetLayerBits:
 	ld c,1									; Why is this reversed? see above
 	cp b
@@ -119,9 +119,12 @@ ISR_SetLayerBits_WrongLayer:
 	rl e
 	rl d
 	djnz ISR_SetLayerBits
+	ld a,%111111110							; In voltage, this is 0001 at the output
+	and e
+	ld e,a
 
 	; Now we need to move it to the output
-	ld b,9 + 3
+	ld b,9 + 3 + 4
 ISR_OutputBits:							; Pipe out 9 bits at a time
 	; Step 1: Set the data, but not the clock
 	xor a
@@ -138,6 +141,24 @@ ISR_OutputBits:							; Pipe out 9 bits at a time
 	out (bPort),a						; ...and actually shift the bit
 	nop
 	nop
+
+	ld a,SendCHDH						; Assert both clock and data, which grounds both.
+	out (bPort),a						; There will be enough math after this to waste time before next bit
+	djnz ISR_OutputBits
+	
+	ld a,SendCHDH
+	out (bPort),a
+	nop
+	nop
+	and ~ClockLow						; De-assert the clock, to bring it high
+	out (bPort),a						; ...and actually shift the bit
+	nop
+	nop
+	ld a,SendCHDH						; Assert both clock and data, which grounds both.
+	out (bPort),a						; There will be enough math after this to waste time before next bit
+	
+	jr ISR_LayerInc
+
 	dec b
 	jr z,ISR_OutputBitsDone
 	ld a,SendCHDH						; Assert both clock and data, which grounds both.
@@ -145,10 +166,11 @@ ISR_OutputBits:							; Pipe out 9 bits at a time
 	jr ISR_OutputBits
 
 ISR_OutputBitsDone:						; Gotta waste time for a nominal 600 cycles
-	ld b,60								; (>= 6e6 clocks/sec * 1e-4 sec / 13 clocks), inflated from 47 for safety
+	ld b,255							; (>= 6e6 clocks/sec * 1e-4 sec / 13 clocks), inflated from 47 for safety
 ISR_OutputBitsDone_Wait:
 	djnz ISR_OutputBitsDone_Wait
 	
+ISR_LayerInc:
 	ld a,SendCHDH						; Assert both clock and data, which grounds both.
 	out (bPort),a						; There will be enough math after this to waste time before next bit
 
