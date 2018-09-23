@@ -187,7 +187,7 @@ ISR_LayerInc_Done:
 	out (3),a
 	ld a,%00001010		;Set 1st timer active
 	out (3),a
-	ld a,%00000110		;Slowest frequency, ~110hz
+	ld a,%00000000		;Fastest timer 1-only frequency, ~560hz = 10,700 cycles max per interrupt
 	out (4),a
 	ex af,af'
 	exx
